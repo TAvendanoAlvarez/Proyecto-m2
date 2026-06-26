@@ -1,0 +1,288 @@
+openapi: "3.0.3"
+info:
+  title: Blog API
+  description: |
+    REST API for managing **authors**, **posts**, and **comments**.
+    Built with Node.js + Express + PostgreSQL.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://YOUR-APP.up.railway.app
+    description: Production (Railway)
+
+tags:
+  - name: Health
+  - name: Authors
+  - name: Posts
+  - name: Comments
+
+paths:
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  # ── Authors ────────────────────────────────────────────────
+
+  /authors:
+    get:
+      tags: [Authors]
+      summary: List all authors
+      responses:
+        "200":
+          description: Array of authors
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Author" }
+    post:
+      tags: [Authors]
+      summary: Create an author
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthorInput" }
+      responses:
+        "201": { description: Author created, content: { application/json: { schema: { $ref: "#/components/schemas/Author" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { description: Email already exists }
+
+  /authors/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      tags: [Authors]
+      summary: Get author by ID
+      responses:
+        "200": { description: Author, content: { application/json: { schema: { $ref: "#/components/schemas/Author" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Authors]
+      summary: Update author
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthorInput" }
+      responses:
+        "200": { description: Updated author, content: { application/json: { schema: { $ref: "#/components/schemas/Author" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Authors]
+      summary: Delete author (cascades to posts and comments)
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ── Posts ─────────────────────────────────────────────────
+
+  /posts:
+    get:
+      tags: [Posts]
+      summary: List all posts (includes author info)
+      responses:
+        "200":
+          description: Array of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Post" }
+    post:
+      tags: [Posts]
+      summary: Create a post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PostInput" }
+      responses:
+        "201": { description: Post created, content: { application/json: { schema: { $ref: "#/components/schemas/Post" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /posts/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      tags: [Posts]
+      summary: Get post by ID
+      responses:
+        "200": { description: Post, content: { application/json: { schema: { $ref: "#/components/schemas/Post" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Posts]
+      summary: Update post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PostInput" }
+      responses:
+        "200": { description: Updated post, content: { application/json: { schema: { $ref: "#/components/schemas/Post" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Posts]
+      summary: Delete post (cascades to comments)
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /posts/author/{authorId}:
+    parameters:
+      - name: authorId
+        in: path
+        required: true
+        schema: { type: integer, example: 1 }
+    get:
+      tags: [Posts]
+      summary: Get all posts by author (with full author detail)
+      responses:
+        "200":
+          description: Posts with author info
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Post" }
+
+  # ── Comments ──────────────────────────────────────────────
+
+  /comments:
+    post:
+      tags: [Comments]
+      summary: Create a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommentInput" }
+      responses:
+        "201": { description: Comment created, content: { application/json: { schema: { $ref: "#/components/schemas/Comment" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /comments/post/{postId}:
+    parameters:
+      - name: postId
+        in: path
+        required: true
+        schema: { type: integer, example: 1 }
+    get:
+      tags: [Comments]
+      summary: List comments for a post
+      responses:
+        "200":
+          description: Array of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Comment" }
+
+  /comments/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    delete:
+      tags: [Comments]
+      summary: Delete a comment
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, example: 1 }
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Missing or invalid fields
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+    Author:
+      type: object
+      properties:
+        id:         { type: integer,  example: 1 }
+        name:       { type: string,   example: "Ana García" }
+        email:      { type: string,   example: "ana@example.com" }
+        bio:        { type: string,   example: "Desarrolladora full-stack." }
+        created_at: { type: string,   format: date-time }
+
+    AuthorInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:  { type: string, example: "Ana García" }
+        email: { type: string, example: "ana@example.com" }
+        bio:   { type: string, example: "Desarrolladora full-stack." }
+
+    Post:
+      type: object
+      properties:
+        id:           { type: integer, example: 1 }
+        title:        { type: string,  example: "Introducción a Node.js" }
+        content:      { type: string,  example: "Node.js es..." }
+        published:    { type: boolean, example: true }
+        author_id:    { type: integer, example: 1 }
+        author_name:  { type: string,  example: "Ana García" }
+        author_email: { type: string,  example: "ana@example.com" }
+        created_at:   { type: string,  format: date-time }
+        updated_at:   { type: string,  format: date-time }
+
+    PostInput:
+      type: object
+      required: [title, content, author_id]
+      properties:
+        title:     { type: string,  example: "Introducción a Node.js" }
+        content:   { type: string,  example: "Node.js es..." }
+        published: { type: boolean, example: false }
+        author_id: { type: integer, example: 1 }
+
+    Comment:
+      type: object
+      properties:
+        id:          { type: integer, example: 1 }
+        body:        { type: string,  example: "Excelente artículo." }
+        post_id:     { type: integer, example: 1 }
+        author_id:   { type: integer, example: 2 }
+        author_name: { type: string,  example: "Carlos Ruiz" }
+        created_at:  { type: string,  format: date-time }
+
+    CommentInput:
+      type: object
+      required: [body, post_id, author_id]
+      properties:
+        body:      { type: string,  example: "Excelente artículo." }
+        post_id:   { type: integer, example: 1 }
+        author_id: { type: integer, example: 2 }
